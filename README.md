@@ -10,10 +10,14 @@ This project is built on Python3, dependency packages as below:
 - install [flask](http://flask.pocoo.org/)
 - install [RPi.GPIO](https://sourceforge.net/p/raspberry-gpio-python/wiki/install/)
 - install [pigpio](http://abyz.me.uk/rpi/pigpio/download.html)
-- install ```pimodules```, which is internal common module for this project, steps as below:
-```shell
-cd ./modules/
-python3 setup.py install
-# verify as
-python3 -c "import pimodules; print('import pimodules successfully')"
+- install [pimodules](https://github.com/ronjian/pimodules)
+
+# Start server:
 ```
+python3 src/server.py
+```
+
+Open url ```http://192.168.1.110:2000/```(replace with your Pi IP address) in your browser.  
+
+
+
