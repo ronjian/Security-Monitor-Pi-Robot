@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, Response
 from pimodules import motor, servo_hw
-from camera.camera_pi import Camera
+from camera import camera_pi
 
 
 app = Flask(__name__)
@@ -19,7 +19,7 @@ def gen(camera):
 @app.route('/video_feed')
 def video_feed():
     """Video streaming route. Put this in the src attribute of an img tag."""
-    return Response(gen(Camera()),
+    return Response(gen(camera_pi.Camera()),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route("/forward")
@@ -77,33 +77,23 @@ def camera_reset():
     horizontal_servo.reset()
     return "OK"
 
-@app.route("/start_instances")
-def start_instances():
-    motor_control.start()
-    vertical_servo.start()
-    horizontal_servo.start()
+@app.route("/switch_detector")
+def switch_detector():
+    camera_pi.switch_detector()
     return "OK"
 
-@app.route("/stop_instances")
-def stop_instances():
-    # make sure to close servos first
-    vertical_servo.stop(reset=False)
-    horizontal_servo.stop(reset=False)
-    motor_control.close()
-    return "OK"
 
 if __name__ == "__main__":
     try:
-        STRIDE = 0.05
-        motor_control = motor.CONTROL(RIGHT_FRONT_PIN=17, LEFT_FRONT_PIN=23, RIGHT_BACK_PIN=22, LEFT_BACK_PIN=24)
+        STRIDE = 0.02
+        motor_control = motor.CONTROL(RIGHT_FRONT_PIN=17, \
+                                        LEFT_FRONT_PIN=23, \
+                                        RIGHT_BACK_PIN=22, \
+                                        LEFT_BACK_PIN=24)
         vertical_servo = servo_hw.CONTROL(PIN=26, STRIDE= STRIDE, reset=False)
         horizontal_servo = servo_hw.CONTROL(PIN=19, STRIDE= STRIDE, reset=False)
-
         app.run(host='0.0.0.0', port=2000, debug=False, threaded=True)
-
     finally:
-        print("Clearing")
-        stop_instances()
-        print("Bye!")
+        print('\nHave a nice day ;)')
 
     

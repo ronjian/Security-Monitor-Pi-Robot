@@ -30,7 +30,7 @@ var left_fired = false;
 var right_fired = false;
 var reset_fired = false;
 var speed_pct = 100;
-var stop_instances_fired = false;
+var switch_detector_fired = false;
 
 // set speed
 function set_speed() {
@@ -148,19 +148,12 @@ document.onkeydown  = function() {
     }
     //b
     if(event.keyCode == 66) {
-      console.log(stop_instances_fired);
-          if(!stop_instances_fired){
-            stop_instances_fired = true;
-            button = document.getElementById('stop_instances');
+          if(!switch_detector_fired){
+            switch_detector_fired = true;
+            button = document.getElementById('switch_detector');
             button.className = 'btn btn-success btn-lg active';
-            console.log('stop instances');
-            $.get("/stop_instances")
-          }else{
-            stop_instances_fired = false;
-            button = document.getElementById('stop_instances');
-            button.className = 'btn btn-success btn-lg active';
-            console.log('start instances');
-            $.get("/start_instances")
+            console.log('switch_detector');
+            $.get("/switch_detector")
           }
     }
 
@@ -274,8 +267,9 @@ document.onkeyup = function() {
     }
     //b
     if(event.keyCode == 66) {
-        button = document.getElementById('stop_instances');
+        button = document.getElementById('switch_detector');
         button.className = 'btn btn-default btn-lg active';
+        switch_detector_fired = false;
     }
 
 };
@@ -301,15 +295,15 @@ document.onkeyup = function() {
 
 
     <center>
-      <p>Motor control with arrow key</p><br>
-
       <div class="input-group mb-3">
-        <input id="speed_pct" type="text" class="form-control" placeholder="Motor speed percentage, range in 0~100, default 100" aria-label="Speed percentage" aria-describedby="basic-addon2">
+        <p>Set motor speed percentage</p>
+        <input id="speed_pct" type="text" class="form-control" placeholder="0~100, default 100" aria-label="Speed percentage" aria-describedby="basic-addon2">
         <div class="input-group-append">
-          <button class="btn btn-outline-secondary" type="button" onclick="set_speed()">Set</button>
-        </div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="set_speed()">SET</button>
+         </div>
       </div>
-
+      <br>
+      <p>Motor control with arrow keys</p>
       <button id="turn left" type="button" class="btn btn-default btn-lg active">
         <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
       </button>
@@ -325,8 +319,9 @@ document.onkeyup = function() {
       <button id="turn right" type="button" class="btn btn-default btn-lg active">
         <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span>
       </button>
-      <br><br><br>
-      <p>Camera servo control with key a,s,w,d, f to reset, g to take photo</p>
+      <br>
+      <br>
+      <p>Camera servo control with keys "a,w,s,d", reset with key "f"</p>
       <button id="left" type="button" class="btn btn-default btn-lg active">
         <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
       </button>
@@ -344,11 +339,14 @@ document.onkeyup = function() {
       <button id="reset" type="button" class="btn btn-default btn-lg active">
         <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
       </button>
-      <p>start/stop servo and motor</p>
-      <button id="stop_instances" type="button" class="btn btn-default btn-lg active">
+      <br>
+      <br>
+      <p>Turn on/off detector with key "b"</p>
+      <button id="switch_detector" type="button" class="btn btn-default btn-lg active">
         <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
       </button>
-      <br><br><br>
+      <br>
+      <br>
      
     </center>
  
