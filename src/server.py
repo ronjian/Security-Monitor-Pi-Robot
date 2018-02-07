@@ -1,6 +1,13 @@
+#!/usr/bin/python3
 from flask import Flask, render_template, request, Response
 from pimodules import motor, servo_hw
 from camera import camera_pi
+from os import listdir,remove
+import conf
+import sys
+from select import select
+
+
 
 
 app = Flask(__name__)
@@ -82,17 +89,47 @@ def switch_detector():
     camera_pi.switch_detector()
     return "OK"
 
+@app.route("/switch_alert")
+def switch_alert():
+    camera_pi.switch_alert()
+    return "OK"
+
+@app.route("/set_param")
+def set_param():
+    thres = int(request.args.get('thres'))
+    minarea = int(request.args.get('minarea'))
+    camera_pi.set_param(thres, minarea)
+    return "OK"
 
 if __name__ == "__main__":
     try:
-        STRIDE = 0.02
-        motor_control = motor.CONTROL(RIGHT_FRONT_PIN=17, \
-                                        LEFT_FRONT_PIN=23, \
-                                        RIGHT_BACK_PIN=22, \
-                                        LEFT_BACK_PIN=24)
-        vertical_servo = servo_hw.CONTROL(PIN=26, STRIDE= STRIDE, reset=False)
-        horizontal_servo = servo_hw.CONTROL(PIN=19, STRIDE= STRIDE, reset=False)
+        motor_control = motor.CONTROL(RIGHT_FRONT_PIN=conf.RIGHT_FRONT_PIN, \
+                                        LEFT_FRONT_PIN=conf.LEFT_FRONT_PIN, \
+                                        RIGHT_BACK_PIN=conf.RIGHT_BACK_PIN, \
+                                        LEFT_BACK_PIN=conf.LEFT_BACK_PIN)
+        vertical_servo = servo_hw.CONTROL(PIN=conf.VERTICAL_SERVO_PIN, \
+                                            STRIDE= conf.STRIDE, reset=False)
+        horizontal_servo = servo_hw.CONTROL(PIN=conf.HORIZONTAL_SERVO_PIN, \
+                                            STRIDE= conf.STRIDE, reset=False)
+
+        #credit: https://stackoverflow.com/questions/3471461/raw-input-and-timeout
+        # def wait_input(prompt="Enter something:", timeout = 10):
+        #     print(prompt)
+        #     rlist, _, _ = select([sys.stdin], [], [], timeout)
+        #     if rlist:
+        #         s = sys.stdin.readline()
+        #         return s.strip()
+        #     else:
+        #         return None
+
+        # if wait_input(prompt="clean the data folder? y|n ", timeout = 10) == "y":
+        #     # clean the image data path
+        #     print("Cleaning...")
+        #     for f in listdir(conf.DATA_PATH):
+        #         remove(conf.DATA_PATH + f)
+
         app.run(host='0.0.0.0', port=2000, debug=False, threaded=True)
+
     finally:
         print('\nHave a nice day ;)')
 
