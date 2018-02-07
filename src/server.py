@@ -93,6 +93,11 @@ def switch_alert():
     camera_pi.switch_alert()
     return "OK"
 
+@app.route("/switch_draw_rectangle")
+def switch_draw_rectangle():
+    camera_pi.switch_draw_rectangle()
+    return "OK"
+
 @app.route("/set_param")
 def set_param():
     thres = int(request.args.get('thres'))
@@ -129,5 +134,6 @@ if __name__ == "__main__":
 
     finally:
         print('\nHave a nice day ;)')
+        camera_pi.TERMINATE_SIGNAL = True
 
     

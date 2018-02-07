@@ -12,6 +12,8 @@ from email.mime.text import MIMEText
 from email.utils import formatdate
 from RPi import GPIO
 import conf
+from queue import Queue
+from threading import Thread
 
 # import default CONSTANT
 DATA_PATH = conf.DATA_PATH
@@ -28,33 +30,96 @@ SMTP_PORT = conf.SMTP_PORT
 EMAIL_PASSWORD = conf.EMAIL_PASSWORD
 CAMERA_RESOLUTION = conf.CAMERA_RESOLUTION
 CAMERA_ROTATION = conf.CAMERA_ROTATION
-
-# Define before assigning
-previous_frame = None # previous frame for detect difference
-previous_timestamp = None
-
+SENT_THRESHOLD = conf.SENT_THRESHOLD
+DRAW_RECTANGLE = conf.DRAW_RECTANGLE
 # GPIO startup
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(SOUND_ALERT_PIN, GPIO.OUT, initial=GPIO.HIGH)
+# global argument 
+TERMINATE_SIGNAL = False
+SENT_CNT = 0
+PREVIOUS_FRAME = None
+PREVIOUS_TIMESTAMP = None
+# alert queue, sharing between email sender and motion detector
+ALERT_Q = Queue()
 
+def email_sender():
+    logon = False
+    print("start email sender")
+    logon_time = None
+    global SENT_CNT
+    while True:
+        if SENT_CNT > SENT_THRESHOLD or TERMINATE_SIGNAL: break
+        to_be_sent = ALERT_Q.qsize()
+        if to_be_sent >0 :
+            print("There are {} alert imgs to be sent.".format(to_be_sent))
+            file_name = ALERT_Q.get_nowait()
+            try:
+                if not logon:
+                    server = smtplib.SMTP_SSL(host=SMTP_DOMAIN, port=SMTP_PORT)
+                    server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
+                    logon = True
+                    logon_time = time.time()
+                    print("login")
+                # server.set_debuglevel(1) 
+                msg = MIMEMultipart()
+                msg['Date'] = formatdate(localtime=True)
+                msg['Subject'] = "!!! Motion Detected !!! " + file_name.split(".")[0]
+                # msg.attach(MIMEText("content"))
+                with open(DATA_PATH + file_name, "rb") as f:
+                    part = MIMEApplication(f.read(),Name=file_name)
+                part['Content-Disposition'] = 'attachment; filename="%s"' % file_name
+                msg.attach(part)
+                server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+                SENT_CNT += 1
+            except Exception as e:
+                print(e)
+                print(file_name + " fail, putback")
+                ALERT_Q.put(file_name)
+        if logon == True and ALERT_Q.empty() and time.time() - logon_time > 25 :
+            server.quit()
+            logon = False
+            print("logout")
+        time.sleep(0.3)
+    print("total sent out {} emails".format(SENT_CNT))
+    print("exit email sender")
+
+# start email sender thread
+T_email_sender = Thread(target=email_sender)
+T_email_sender.start()
+
+def sent_cnt_refresher():
+    print("start sent_count refresher")
+    global SENT_CNT
+    current_day = datetime.datetime.now().strftime("%Y-%m-%d")
+    while not TERMINATE_SIGNAL:
+        time.sleep(10)
+        if current_day != datetime.datetime.now().strftime("%Y-%m-%d"):
+            SENT_CNT = 0
+            current_day = datetime.datetime.now().strftime("%Y-%m-%d")
+    print("exit sent_cnt refresher")
+
+# start sent_count refresher
+T_sent_cnt_refresher = Thread(target=sent_cnt_refresher)
+T_sent_cnt_refresher.start()   
 
 # https://www.pyimagesearch.com/2015/05/25/basic-motion-detection-and-tracking-with-python-and-opencv/
 def detection_algorithm(frame):
-    global previous_frame
-    global previous_timestamp
+    global PREVIOUS_FRAME
+    global PREVIOUS_TIMESTAMP
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
  
     # if the first frame is None, initialize it
-    if previous_frame is None:
-        previous_frame = gray
-        previous_timestamp = time.time()
+    if PREVIOUS_FRAME is None:
+        PREVIOUS_FRAME = gray
+        PREVIOUS_TIMESTAMP = time.time()
         detected = False
     else:
         # compute the absolute difference between the current frame and
         # first frame
-        frameDelta = cv2.absdiff(previous_frame, gray)
+        frameDelta = cv2.absdiff(PREVIOUS_FRAME, gray)
         thresh = cv2.threshold(frameDelta, THRESHOLD, 255, cv2.THRESH_BINARY)[1]
      
         # dilate the thresholded image to fill in holes, then find contours
@@ -69,10 +134,11 @@ def detection_algorithm(frame):
             # if the contour is too small, ignore it
             if cv2.contourArea(c) < MIN_AREA:
                 continue
-            # compute the bounding box for the contour, draw it on the frame,
-            (x, y, w, h) = cv2.boundingRect(c)
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             label_cnt += 1
+            if DRAW_RECTANGLE:
+                # compute the bounding box for the contour, draw it on the frame,
+                (x, y, w, h) = cv2.boundingRect(c)
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         # update the text
         if label_cnt > 0: 
             text = "Occupied"
@@ -88,10 +154,10 @@ def detection_algorithm(frame):
         cv2.putText(frame, datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p"),
             (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
         current_timestamp = time.time()
-        cv2.putText(frame, "FPS: "+str(1.0 / (current_timestamp - previous_timestamp)),
+        cv2.putText(frame, "FPS: "+str(1.0 / (current_timestamp - PREVIOUS_TIMESTAMP)),
             (frame.shape[1]-100, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
-        previous_timestamp = current_timestamp
-        previous_frame = gray
+        PREVIOUS_TIMESTAMP = current_timestamp
+        PREVIOUS_FRAME = gray
 
     return frame, detected
 
@@ -106,26 +172,11 @@ def motion_detecter(stream):
         file_name = "{timestamp:%Y-%m-%d-%H-%M-%S-%f}.jpg".format(
                                     timestamp=datetime.datetime.now())
         cv2.imwrite(DATA_PATH + file_name, frame)
-        # send_email(file_name)
+        ALERT_Q.put(file_name)
     if SOUND_ALERT_FLG: 
         alert_control(detected)
     frame2bytes = cv2.imencode('.jpeg', frame)[1].tostring()
     return io.BytesIO(frame2bytes)
-
-def send_email(file_name):
-    msg = MIMEMultipart()
-    msg['Date'] = formatdate(localtime=True)
-    msg['Subject'] = file_name.split(".")[0]
-    # msg.attach(MIMEText("content"))
-    with open(DATA_PATH + file_name, "rb") as f:
-        part = MIMEApplication(f.read(),Name=file_name)
-    part['Content-Disposition'] = 'attachment; filename="%s"' % file_name
-    msg.attach(part)
-    server = smtplib.SMTP_SSL(host=SMTP_DOMAIN, port=SMTP_PORT)
-    # server.set_debuglevel(1) 
-    server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
-    server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
-    server.quit()
 
 def switch_detector():
     global DETECT_FLG
@@ -143,6 +194,13 @@ def switch_alert():
         SOUND_ALERT_FLG = False
     else:
         SOUND_ALERT_FLG = True
+
+def switch_draw_rectangle():
+    global DRAW_RECTANGLE
+    if DRAW_RECTANGLE == True:
+        DRAW_RECTANGLE = False
+    else:
+        DRAW_RECTANGLE = True
 
 def set_param(thres, minarea):
     global THRESHOLD
@@ -184,6 +242,4 @@ class Camera(BaseCamera):
                 # reset stream for next frame
                 stream.seek(0)
                 stream.truncate()
-
-
 
