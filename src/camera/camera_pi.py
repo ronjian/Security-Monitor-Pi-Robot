@@ -14,6 +14,8 @@ from RPi import GPIO
 import conf
 from queue import Queue
 from threading import Thread
+import logging
+logger = logging.getLogger(__name__)
 
 # import default CONSTANT
 DATA_PATH = conf.DATA_PATH
@@ -33,6 +35,7 @@ CAMERA_ROTATION = conf.CAMERA_ROTATION
 SENT_THRESHOLD = conf.SENT_THRESHOLD
 DRAW_RECTANGLE = conf.DRAW_RECTANGLE
 # GPIO startup
+GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(SOUND_ALERT_PIN, GPIO.OUT, initial=GPIO.HIGH)
 # global argument 
@@ -45,22 +48,27 @@ ALERT_Q = Queue()
 
 def email_sender():
     logon = False
-    print("start email sender")
+    logger.debug("start email sender")
     logon_time = None
     global SENT_CNT
     while True:
         if SENT_CNT > SENT_THRESHOLD or TERMINATE_SIGNAL: break
         to_be_sent = ALERT_Q.qsize()
         if to_be_sent >0 :
-            print("There are {} alert imgs to be sent.".format(to_be_sent))
+            logger.debug("There are {} alert imgs to be sent.".format(to_be_sent))
             file_name = ALERT_Q.get_nowait()
             try:
                 if not logon:
-                    server = smtplib.SMTP_SSL(host=SMTP_DOMAIN, port=SMTP_PORT)
-                    server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
+                    try:
+                        server = smtplib.SMTP_SSL(host=SMTP_DOMAIN, port=SMTP_PORT)
+                        server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
+                    except Exception as e:
+                        logger.warn(e)
+                        logger.warn("can't logon QQ SMTP SERVICE")
+                        break
                     logon = True
                     logon_time = time.time()
-                    print("login")
+                    logger.debug("login")
                 # server.set_debuglevel(1) 
                 msg = MIMEMultipart()
                 msg['Date'] = formatdate(localtime=True)
@@ -73,23 +81,23 @@ def email_sender():
                 server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
                 SENT_CNT += 1
             except Exception as e:
-                print(e)
-                print(file_name + " fail, putback")
+                logger.warn(e)
+                logger.warn(file_name + " fail, putback")
                 ALERT_Q.put(file_name)
         if logon == True and ALERT_Q.empty() and time.time() - logon_time > 25 :
             server.quit()
             logon = False
-            print("logout")
+            logger.debug("logout")
         time.sleep(0.3)
-    print("total sent out {} emails".format(SENT_CNT))
-    print("exit email sender")
+    logger.debug("total sent out {} emails".format(SENT_CNT))
+    logger.debug("exit email sender")
 
 # start email sender thread
 T_email_sender = Thread(target=email_sender)
 T_email_sender.start()
 
 def sent_cnt_refresher():
-    print("start sent_count refresher")
+    logger.debug("start sent_count refresher")
     global SENT_CNT
     current_day = datetime.datetime.now().strftime("%Y-%m-%d")
     while not TERMINATE_SIGNAL:
@@ -97,7 +105,7 @@ def sent_cnt_refresher():
         if current_day != datetime.datetime.now().strftime("%Y-%m-%d"):
             SENT_CNT = 0
             current_day = datetime.datetime.now().strftime("%Y-%m-%d")
-    print("exit sent_cnt refresher")
+    logger.debug("exit sent_cnt refresher")
 
 # start sent_count refresher
 T_sent_cnt_refresher = Thread(target=sent_cnt_refresher)
@@ -143,7 +151,7 @@ def detection_algorithm(frame):
         if label_cnt > 0: 
             text = "Occupied"
             detected = True
-            # print("detected!! {}".format(datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p")))
+            # logger.debug("detected!! {}".format(datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p")))
         else : 
             text = "Unoccupied"
             detected = False

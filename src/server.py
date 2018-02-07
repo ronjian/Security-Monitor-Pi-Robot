@@ -7,6 +7,8 @@ import conf
 import sys
 import threading
 from time import sleep
+import logging
+
 
 app = Flask(__name__)
 
@@ -111,15 +113,18 @@ def kicker():
         # kick off 10 times to make sure camera monitor start
         for i in range(10):
             sleep(2)
-            print('In start loop')
+            logging.debug('In start loop')
             system("curl -s http://0.0.0.0:2000/video_feed | head -1 > /dev/null")
-        print("Out start loop")
+        logging.debug("Out start loop")
     thread = threading.Thread(target=start_loop)
     thread.start()
 
 
 if __name__ == "__main__":
     try:
+        
+        logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
+
         motor_control = motor.CONTROL(RIGHT_FRONT_PIN=conf.RIGHT_FRONT_PIN, \
                                         LEFT_FRONT_PIN=conf.LEFT_FRONT_PIN, \
                                         RIGHT_BACK_PIN=conf.RIGHT_BACK_PIN, \
@@ -133,7 +138,7 @@ if __name__ == "__main__":
         app.run(host='0.0.0.0', port=2000, debug=False, threaded=True)
 
     finally:
-        print('\nHave a nice day ;)')
+        logging.info('\nHave a nice day ;)')
         camera_pi.TERMINATE_SIGNAL = True
 
     

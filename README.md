@@ -1,3 +1,5 @@
+# demo
+
 
 # setup steps:
 - ```sudo raspi-config``` to enable camera and reboot Pi
@@ -12,15 +14,18 @@ This project works on Python3 and Raspbian Stretch, dependency packages as below
 - install [pigpio](http://abyz.me.uk/rpi/pigpio/download.html)
 - install [pimodules](https://github.com/ronjian/pimodules)
 - place email password ```echo "your password" > password.txt```
+- change the configures ```src/conf.ini``` to your owns'
 
-# Start server:
+# start the server and check the log:
 ```
-python3 src/server.py
+nohup python3 ./src/server.py &
+tail -f ./src/myapp.log
 ```
+
 
 Open url ```http://192.168.1.110:2000/```(replace with your own Pi's IP address) in your browser.  
 
-# steps to add into system service:
+# steps to add this project into system service:
 
 ```shell
 sudo vi /etc/systemd/system/security_monitor.service
@@ -48,6 +53,7 @@ sudo systemctl start security_monitor.service
 Stop the process  
 ```shell
 sudo systemctl stop security_monitor.service
+sudo systemctl disable security_monitor.service
 ```
 Check log is fine  
 ```shell
