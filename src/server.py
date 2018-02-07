@@ -2,15 +2,14 @@
 from flask import Flask, render_template, request, Response
 from pimodules import motor, servo_hw
 from camera import camera_pi
-from os import listdir,remove
+from os import listdir,remove, system
 import conf
 import sys
-from select import select
-
-
-
+import threading
+from time import sleep
 
 app = Flask(__name__)
+
 
 @app.route("/")
 def index():
@@ -101,6 +100,19 @@ def set_param():
     camera_pi.set_param(thres, minarea)
     return "OK"
 
+# https://networklore.com/start-task-with-flask/
+def kicker():
+    def start_loop():
+        # kick off 10 times to make sure camera monitor start
+        for i in range(10):
+            sleep(2)
+            print('In start loop')
+            system("curl -s http://0.0.0.0:2000/video_feed | head -1 > /dev/null")
+        print("Out start loop")
+    thread = threading.Thread(target=start_loop)
+    thread.start()
+
+
 if __name__ == "__main__":
     try:
         motor_control = motor.CONTROL(RIGHT_FRONT_PIN=conf.RIGHT_FRONT_PIN, \
@@ -111,23 +123,8 @@ if __name__ == "__main__":
                                             STRIDE= conf.STRIDE, reset=False)
         horizontal_servo = servo_hw.CONTROL(PIN=conf.HORIZONTAL_SERVO_PIN, \
                                             STRIDE= conf.STRIDE, reset=False)
-
-        #credit: https://stackoverflow.com/questions/3471461/raw-input-and-timeout
-        # def wait_input(prompt="Enter something:", timeout = 10):
-        #     print(prompt)
-        #     rlist, _, _ = select([sys.stdin], [], [], timeout)
-        #     if rlist:
-        #         s = sys.stdin.readline()
-        #         return s.strip()
-        #     else:
-        #         return None
-
-        # if wait_input(prompt="clean the data folder? y|n ", timeout = 10) == "y":
-        #     # clean the image data path
-        #     print("Cleaning...")
-        #     for f in listdir(conf.DATA_PATH):
-        #         remove(conf.DATA_PATH + f)
-
+        # kick the camera monitor thread
+        kicker()
         app.run(host='0.0.0.0', port=2000, debug=False, threaded=True)
 
     finally:

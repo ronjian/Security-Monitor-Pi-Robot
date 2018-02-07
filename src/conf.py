@@ -3,8 +3,6 @@ import configparser
 # Constant configure
 # credit: https://docs.python.org/3/library/configparser.html#supported-datatypes
 config = configparser.ConfigParser()
-import os
-print(os.path.abspath('./conf.ini'))
 config.read('./conf.ini')
 DATA_PATH = config['DEFAULT']['DATA_PATH'] 
 THRESHOLD = int(config['DEFAULT']['THRESHOLD']) 

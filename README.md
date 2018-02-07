@@ -45,4 +45,12 @@ Enable and start service, this service will be automatically kick off next time 
 sudo systemctl enable security_monitor.service
 sudo systemctl start security_monitor.service
 ```
+Stop the process  
+```shell
+sudo systemctl stop security_monitor.service
+```
+Check log is fine  
+```shell
+tail -100 /var/log/syslog
+```
 
