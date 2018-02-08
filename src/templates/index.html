@@ -33,6 +33,7 @@ var speed_pct = 100;
 var switch_detector_fired = false;
 var switch_alert_fired = false;
 var switch_draw_rectangl_fired = false;
+var switch_patrol_fired = false;
 
 // set speed
 function set_speed() {
@@ -183,6 +184,16 @@ document.onkeydown  = function() {
             $.get("/switch_draw_rectangle")
           }
     }
+    //j
+    if(event.keyCode == 74) {
+          if(!switch_patrol_fired){
+            switch_patrol_fired = true;
+            button = document.getElementById('switch_patrol');
+            button.className = 'btn btn-success btn-lg active';
+            console.log('switch patrol ');
+            $.get("/switch_patrol")
+          }
+    }
 
 };
  
@@ -310,6 +321,12 @@ document.onkeyup = function() {
         button.className = 'btn btn-default btn-lg active';
         switch_draw_rectangle_fired = false;
     }
+    //j
+    if(event.keyCode == 74) {
+        button = document.getElementById('switch_patrol');
+        button.className = 'btn btn-default btn-lg active';
+        switch_patrol_fired = false;
+    }
 };
  
 </script>
@@ -385,7 +402,12 @@ document.onkeyup = function() {
       </button>
       <br>
       <br>
-
+      <p>Turn on/off patroller with key "j"</p>
+      <button id="switch_patrol" type="button" class="btn btn-default btn-lg active">
+        <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
+      </button>
+      <br>
+      <br>
         <div class="input-group mb-3">
         <p>Set detection frame delta threshold</p>
         <input id="thres" type="text" class="form-control" placeholder="default 25" aria-label="frame delta threshold" aria-describedby="basic-addon2">
@@ -409,6 +431,7 @@ document.onkeyup = function() {
       </button>
       <br>
       <br>
+
     </center>
  
   </div>

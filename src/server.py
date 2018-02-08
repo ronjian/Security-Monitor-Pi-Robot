@@ -8,7 +8,12 @@ import sys
 import threading
 from time import sleep
 import logging
+from random import randint
+from ast import literal_eval as make_tuple
 
+# global param
+PATROL = conf.PATROL
+TERMINATE_SIGNAL = False
 
 app = Flask(__name__)
 
@@ -61,22 +66,26 @@ def stop():
 
 @app.route("/camera_up")
 def camera_up():
-    vertical_servo.step_move(direction = -1.0)
+    cur_dc = vertical_servo.step_move(direction = -1.0)
+    logging.info("vertical dc {}".format(cur_dc))
     return "OK"
  
 @app.route("/camera_down")
 def camera_down():
-    vertical_servo.step_move(direction = 1.0)
+    cur_dc = vertical_servo.step_move(direction = 1.0)
+    logging.info("vertical dc {}".format(cur_dc))
     return "OK"
 
 @app.route("/camera_left")
 def camera_left():
-    horizontal_servo.step_move(direction = 1.0)
+    cur_dc = horizontal_servo.step_move(direction = 1.0)
+    logging.info("horizontal dc {}".format(cur_dc))
     return "OK"
  
 @app.route("/camera_right")
 def camera_right():
-    horizontal_servo.step_move(direction = -1.0)
+    cur_dc = horizontal_servo.step_move(direction = -1.0)
+    logging.info("horizontal dc {}".format(cur_dc))
     return "OK"
 
 @app.route("/camera_reset")
@@ -107,23 +116,57 @@ def set_param():
     camera_pi.set_param(thres, minarea)
     return "OK"
 
+@app.route("/switch_patrol")
+def switch_patrol():
+    global PATROL
+    if PATROL == True:
+        PATROL = False
+    else:
+        PATROL = True
+    return "OK"
+
 # https://networklore.com/start-task-with-flask/
 def kicker():
     def start_loop():
         # kick off 10 times to make sure camera monitor start
         for i in range(10):
+            if TERMINATE_SIGNAL: break
             sleep(2)
             logging.debug('In start loop')
             system("curl -s http://0.0.0.0:2000/video_feed | head -1 > /dev/null")
         logging.debug("Out start loop")
-    thread = threading.Thread(target=start_loop)
-    thread.start()
+    t = threading.Thread(target=start_loop)
+    t.start()
 
+
+def patroller():
+    def patrol_thread():
+        pos_l = conf.PATROL_POSITION.split('|')
+        cnt = 0 
+        logging.debug('patrol thread start')
+        pos_cnt = len(pos_l)
+        while not TERMINATE_SIGNAL:
+            if PATROL and pos_cnt > 1:
+                pos = make_tuple(pos_l[cnt % pos_cnt])
+                camera_pi.DETECT_FLG = False
+                sleep(0.5)
+                horizontal_servo.direct_move(pos[0], given_time = 1.0)
+                vertical_servo.direct_move(pos[1], given_time = 0.5)
+                camera_pi.PREVIOUS_FRAME = None
+                # give camera time to adapt new vision
+                sleep(2)
+                camera_pi.DETECT_FLG = True
+                cnt += 1
+            # interval
+            sleep(randint(4,7))
+        logging.debug("exit patroller")
+    t = threading.Thread(target=patrol_thread)
+    t.start()
 
 if __name__ == "__main__":
     try:
-        
-        logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
+        FORMAT = '%(asctime)-15s|%(name)s|%(message)s'
+        logging.basicConfig(filename='myapp.log', level=logging.DEBUG, format=FORMAT)
 
         motor_control = motor.CONTROL(RIGHT_FRONT_PIN=conf.RIGHT_FRONT_PIN, \
                                         LEFT_FRONT_PIN=conf.LEFT_FRONT_PIN, \
@@ -133,12 +176,15 @@ if __name__ == "__main__":
                                             STRIDE= conf.STRIDE, reset=False)
         horizontal_servo = servo_hw.CONTROL(PIN=conf.HORIZONTAL_SERVO_PIN, \
                                             STRIDE= conf.STRIDE, reset=False)
-        # kick the camera monitor thread
+        # kick off the camera monitor thread
         kicker()
+        # kick off the patroller
+        patroller()
         app.run(host='0.0.0.0', port=2000, debug=False, threaded=True)
 
     finally:
         logging.info('\nHave a nice day ;)')
         camera_pi.TERMINATE_SIGNAL = True
+        TERMINATE_SIGNAL = True
 
     

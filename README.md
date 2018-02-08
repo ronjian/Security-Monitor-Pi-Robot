@@ -13,8 +13,9 @@ This project works on Python3 and Raspbian Stretch, dependency packages as below
 - install [RPi.GPIO](https://sourceforge.net/p/raspberry-gpio-python/wiki/install/)
 - install [pigpio](http://abyz.me.uk/rpi/pigpio/download.html)
 - install [pimodules](https://github.com/ronjian/pimodules)
-- place email password ```echo "your password" > password.txt```
-- change the configures ```src/conf.ini``` to your owns'
+- download this project ```git clone https://github.com/ronjian/Security-Monitor-Pi-Robot.git```
+- place email password ```echo "your password" > ./src/password.txt```
+- change the configures ```./src/conf.ini``` to your owns'
 
 # start the server and check the log:
 ```

@@ -52,7 +52,7 @@ def email_sender():
     logon_time = None
     global SENT_CNT
     while True:
-        if SENT_CNT > SENT_THRESHOLD or TERMINATE_SIGNAL: break
+        if SENT_CNT >= SENT_THRESHOLD or TERMINATE_SIGNAL: break
         to_be_sent = ALERT_Q.qsize()
         if to_be_sent >0 :
             logger.debug("There are {} alert imgs to be sent.".format(to_be_sent))
