@@ -29,4 +29,10 @@ LEFT_BACK_PIN=int(config['DEFAULT']['LEFT_BACK_PIN'])
 SENT_THRESHOLD=int(config['DEFAULT']['SENT_THRESHOLD'])
 DRAW_RECTANGLE=config['DEFAULT'].getboolean('DRAW_RECTANGLE') 
 PATROL_POSITION=config['DEFAULT']['PATROL_POSITION']
-PATROL =config['DEFAULT'].getboolean('PATROL') 
+PATROL =config['DEFAULT'].getboolean('PATROL')
+PATROL_INTERVAL=config['DEFAULT']['PATROL_INTERVAL']
+
+def set_config(sec, k, v):
+	config.set(sec, k, v)
+	with open('./conf.ini', 'w') as f:
+		config.write(f)
