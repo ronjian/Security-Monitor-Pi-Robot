@@ -1,5 +1,6 @@
 # demo
 
+https://www.youtube.com/watch?v=RFJBnqK6Cd0&feature=youtu.be
 
 # setup steps:
 - ```sudo raspi-config``` to enable camera and reboot Pi

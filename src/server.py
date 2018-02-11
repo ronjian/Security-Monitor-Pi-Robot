@@ -100,10 +100,9 @@ def camera_right():
     logging.info("horizontal dc {}".format(HORIZONTAL_DC))
     return "OK"
 
-@app.route("/camera_reset")
-def camera_reset():
-    vertical_servo.reset()
-    horizontal_servo.reset()
+@app.route("/camera_capture")
+def camera_capture():
+    camera_pi.CAPTURE=True
     return "OK"
 
 @app.route("/switch_detector")
@@ -185,12 +184,11 @@ def patroller():
         # patrol interval
         f, t = make_tuple(conf.PATROL_INTERVAL)
         while not TERMINATE_SIGNAL:
-            pos_l = conf.PATROL_POSITION.split('|')
-            pos_cnt = len(pos_l)
-            if PATROL and pos_cnt > 1:
+            if PATROL:
+                pos_l = conf.PATROL_POSITION.split('|')
+                pos_cnt = len(pos_l)
                 pos = make_tuple(pos_l[cnt % pos_cnt])
                 camera_pi.DETECT_FLG = False
-                logger.debug("To position {}".format(pos))
                 horizontal_servo.direct_move(pos[0], given_time = 0.6)
                 vertical_servo.direct_move(pos[1], given_time = 0.3)
                 # give camera time to adapt new vision
@@ -212,9 +210,15 @@ def email_sender():
         global SENT_CNT
         while True:
             if TERMINATE_SIGNAL: break
+            # check if need to logout
+            if logon == True and time() - logon_time > 30 :
+                server.quit()
+                logon = False
+                logger.debug("logout")
+            # there is a threshold make sure this process will 
+            # not become auto spam email machine
             if SENT_CNT >= conf.SENT_THRESHOLD: 
-                # extra wait time to reduce cost
-                sleep(5)
+                sleep(10)
                 continue
             to_be_sent = camera_pi.ALERT_Q.qsize()
             if to_be_sent >0 :
@@ -248,10 +252,7 @@ def email_sender():
                     logger.warn(e)
                     logger.warn(file_name + " fail, putback")
                     camera_pi.ALERT_Q.put(file_name)
-            if logon == True and camera_pi.ALERT_Q.empty() and time() - logon_time > 25 :
-                server.quit()
-                logon = False
-                logger.debug("logout")
+
             sleep(0.3)
         logger.debug("total sent out {} emails".format(SENT_CNT))
         logger.debug("exit email sender")
@@ -269,6 +270,10 @@ def sent_cnt_refresher():
         while not TERMINATE_SIGNAL:
             sleep(10)
             if current_day != datetime.datetime.now().strftime("%Y-%m-%d"):
+                logger.debug("cleaning alert queue")
+                while not camera_pi.ALERT_Q.empty():
+                    _ = camera_pi.ALERT_Q.get_nowait()
+                logger.debug("alert queue is cleaned")
                 SENT_CNT = 0
                 current_day = datetime.datetime.now().strftime("%Y-%m-%d")
         logger.debug("exit sent_cnt refresher")

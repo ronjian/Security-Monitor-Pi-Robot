@@ -28,6 +28,7 @@ GPIO.setup(SOUND_ALERT_PIN, GPIO.OUT, initial=GPIO.HIGH)
 # global argument 
 PREVIOUS_FRAME = None
 PREVIOUS_TIMESTAMP = None
+CAPTURE=False
 # alert queue, sharing between email sender and motion detector
 ALERT_Q = Queue()
 
@@ -160,6 +161,14 @@ class Camera(BaseCamera):
                                                         use_video_port=True):
                 # return current frame
                 stream.seek(0)
+                if CAPTURE:
+                    ndarray = np.fromstring(stream.getvalue(), dtype=np.uint8)
+                    frame = cv2.imdecode(ndarray, cv2.IMREAD_COLOR)
+                    file_name = "capture_{timestamp:%Y-%m-%d-%H-%M-%S-%f}.jpg".format(
+                                    timestamp=datetime.datetime.now())
+                    cv2.imwrite(DATA_PATH + file_name, frame)
+                    global CAPTURE
+                    CAPTURE=False
                 if DETECT_FLG:
                     stream_monitoring = motion_detecter(stream)
                     yield stream_monitoring.read()
