@@ -2,6 +2,8 @@
 
 https://www.youtube.com/watch?v=RFJBnqK6Cd0&feature=youtu.be
 
+![robot](robot.jpg)
+
 # setup steps:
 - ```sudo raspi-config``` to enable camera and reboot Pi
 - If you unfortunately delete the camera corresponding firmware like me, don't worry and check this [post](https://raspberrypi.stackexchange.com/questions/67156/how-can-i-install-raspistill-raspicam-on-a-distro-that-doesnt-include-them) to restore it. It took me 20 mins to restore Pi camera firmware.
