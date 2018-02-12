@@ -192,7 +192,7 @@ def patroller():
                 horizontal_servo.direct_move(pos[0], given_time = 0.6)
                 vertical_servo.direct_move(pos[1], given_time = 0.3)
                 # give camera time to adapt new vision
-                sleep(1.0)
+                sleep(2.0)
                 camera_pi.PREVIOUS_FRAME = None
                 camera_pi.DETECT_FLG = True
                 cnt += 1
