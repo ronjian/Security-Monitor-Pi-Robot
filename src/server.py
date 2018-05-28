@@ -233,7 +233,8 @@ def email_sender():
                         except Exception as e:
                             logger.warn(e)
                             logger.warn("can't logon QQ SMTP SERVICE")
-                            break
+                            sleep(5)
+                            continue
                         logon = True
                         logon_time =time()
                         logger.debug("login")

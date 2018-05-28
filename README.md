@@ -68,3 +68,7 @@ Check log is fine
 tail -100 /var/log/syslog
 ```
 
+# Mapping the internal web server (192.168.31.109:20000) to the Internet (http://209640a7u0.iok.la:20705/)
+
+please follow this documents. Please note the application will charge a little money.
+- http://service.oray.com/question/2680.html
