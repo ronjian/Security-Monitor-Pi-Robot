@@ -1,4 +1,4 @@
-import io
+import io,sys
 import time
 import picamera
 from camera.base_camera import BaseCamera
@@ -9,7 +9,12 @@ from RPi import GPIO
 import conf
 from queue import Queue
 import logging
+from PIL import Image
 logger = logging.getLogger(__name__)
+
+sys.path.append("..")
+from nc_app.security_picam import open_ncs_device, load_graph, pre_process_image, infer_image, close_ncs_device
+
 
 # import default CONSTANT
 DATA_PATH = conf.DATA_PATH
@@ -150,32 +155,60 @@ def alert_control(detected):
 class Camera(BaseCamera):
     @staticmethod
     def frames():
-        with picamera.PiCamera() as camera:
-            camera.resolution = CAMERA_RESOLUTION
-            camera.rotation= CAMERA_ROTATION
-            # let camera warm up
-            time.sleep(2)
+        print("initialize neural stick")
+        device = open_ncs_device()
+        try:
+            graph, input_fifo, output_fifo = load_graph( device )
+            with picamera.PiCamera() as camera:
+                print("warm up camera")
 
-            stream = io.BytesIO()
-            for _ in camera.capture_continuous(stream, 'jpeg',
-                                                        use_video_port=True):
-                # return current frame
-                stream.seek(0)
-                if CAPTURE:
-                    ndarray = np.fromstring(stream.getvalue(), dtype=np.uint8)
-                    frame = cv2.imdecode(ndarray, cv2.IMREAD_COLOR)
-                    file_name = "capture_{timestamp:%Y-%m-%d-%H-%M-%S-%f}.jpg".format(
-                                    timestamp=datetime.datetime.now())
-                    cv2.imwrite(DATA_PATH + file_name, frame)
+
+                camera.resolution = CAMERA_RESOLUTION
+                camera.rotation= CAMERA_ROTATION
+                # let camera warm up
+                time.sleep(2)
+
+                stream = io.BytesIO()
+                for _ in camera.capture_continuous(stream, 'jpeg',
+                                                            use_video_port=True):
+                    # return current frame
+                    stream.seek(0)
                     global CAPTURE
-                    CAPTURE=False
-                if DETECT_FLG:
-                    stream_monitoring = motion_detecter(stream)
-                    yield stream_monitoring.read()
-                else:
-                    yield stream.read()
+                    if CAPTURE:
+                        ndarray = np.fromstring(stream.getvalue(), dtype=np.uint8)
+                        frame = cv2.imdecode(ndarray, cv2.IMREAD_COLOR)
+                        file_name = "capture_{timestamp:%Y-%m-%d-%H-%M-%S-%f}.jpg".format(
+                                        timestamp=datetime.datetime.now())
+                        cv2.imwrite(DATA_PATH + file_name, frame)
+                        CAPTURE=False
+                    if DETECT_FLG:
+                        #stream_monitoring = motion_detecter(stream)
+                        ndarray = np.fromstring(stream.getvalue(), dtype=np.uint8)
+                        frame = cv2.imdecode(ndarray, cv2.IMREAD_COLOR)
+                        img = pre_process_image(frame)
+                        frame, detect_flg = infer_image( graph, input_fifo, output_fifo, img, frame )
+                        if detect_flg:
+                            # save the frame
+                            # https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_gui/py_image_display/py_image_display.html#write-an-image
+                            file_name = "{timestamp:%Y-%m-%d-%H-%M-%S-%f}.jpg".format(
+                                                        timestamp=datetime.datetime.now())
+                            cv2.imwrite(DATA_PATH + file_name, frame)
+                            ALERT_Q.put(file_name)
+                        frame2bytes = cv2.imencode('.jpeg', frame)[1].tostring()
+                        yield io.BytesIO(frame2bytes).read()
+                    else:
+                        yield stream.read()
 
-                # reset stream for next frame
-                stream.seek(0)
-                stream.truncate()
+                    # reset stream for next frame
+                    stream.seek(0)
+                    stream.truncate()
+                    # reduce FPS to save cpu cost
+                    time.sleep(0.05)
+        except Exception as e:
+            print(e)
+            print("close neural stick")
+            close_ncs_device( device, graph, input_fifo, output_fifo )
+
+        print("close neural stick")
+        close_ncs_device( device, graph, input_fifo, output_fifo )
 

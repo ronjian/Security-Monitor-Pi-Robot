@@ -2,11 +2,11 @@
 
 https://www.youtube.com/watch?v=RFJBnqK6Cd0&feature=youtu.be
 
-![robot](robot.jpg)
+![robot](assets/robot.jpg)
 
 # diagram
 
-![diagram](diagram.jpg)
+![diagram](assets/diagram.jpg)
 
 # setup steps:
 - ```sudo raspi-config``` to enable camera and reboot Pi
@@ -72,3 +72,22 @@ tail -100 /var/log/syslog
 
 please follow this documents. Please note the application will charge a little money.
 - http://service.oray.com/question/2680.html
+
+# Update
+
+## Intergrate The Intel® Movidius™ Neural Compute Stick to do inference of deep neural network
+
+Install NC SDK:
+```git clone -b ncsdk2 http://github.com/Movidius/ncsdk && cd ncsdk && make install```
+
+I borrow the idea from ncappzoo and change the NCAPI from V1 to V2
+ to detect person via MobileNet-SSD deep nueral network.
+
+- https://github.com/movidius/ncappzoo/tree/master/apps/security-cam
+
+Device and webpage screenshot:
+
+![device_with_movidius](assets/device_with_movidius.jpg)
+![webpage_with_movidius](assets/webpage_with_movidius.jpg)
+
+
