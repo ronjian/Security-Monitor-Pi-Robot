@@ -4,7 +4,7 @@ from pimodules import motor, servo_hw
 from camera import camera_pi
 from os import listdir,remove, system
 import conf
-import sys
+import sys, os
 from threading import Thread
 from time import sleep, time
 import logging
@@ -16,6 +16,8 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
+import shutil
+
 
 # global params
 PATROL = conf.PATROL
@@ -183,20 +185,22 @@ def patroller():
         logger.debug('patrol thread start')
         # patrol interval
         f, t = make_tuple(conf.PATROL_INTERVAL)
-        while not TERMINATE_SIGNAL:
-            if PATROL:
-                pos_l = conf.PATROL_POSITION.split('|')
-                pos_cnt = len(pos_l)
-                pos = make_tuple(pos_l[cnt % pos_cnt])
-                camera_pi.DETECT_FLG = False
-                horizontal_servo.direct_move(pos[0], given_time = 0.6)
-                vertical_servo.direct_move(pos[1], given_time = 0.3)
-                # give camera time to adapt new vision
-                sleep(2.0)
-                camera_pi.PREVIOUS_FRAME = None
-                camera_pi.DETECT_FLG = True
-                cnt += 1
+        while not TERMINATE_SIGNAL and PATROL:
+            pos_l = conf.PATROL_POSITION.split('|')
+            pos_cnt = len(pos_l)
+            pos = make_tuple(pos_l[cnt % pos_cnt])
+            camera_pi.DETECT_FLG = False
+            horizontal_servo.direct_move(pos[0], given_time = 0.6)
+            vertical_servo.direct_move(pos[1], given_time = 0.3)
+            # give camera time to adapt new vision
+            #sleep(0.3)
+            camera_pi.PREVIOUS_FRAME = None
+            camera_pi.DETECT_FLG = True
+            cnt += 1
             sleep(randint(f,t))
+            while camera_pi.PERSON_FLG:
+                logger.debug("person detected, patroller is waiting")
+                sleep(randint(f,t))
         logger.debug("exit patroller")
     t = Thread(target=patrol_thread)
     t.start()
@@ -283,6 +287,12 @@ def sent_cnt_refresher():
     t = Thread(target=sent_cnt_refresher_thread)
     t.start()   
 
+def recreate_dir(path):
+    """recreate dir: if exists, then purge, if not, then create"""
+    print("re-create directory: ", path)
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.makedirs(path)
 
 
 if __name__ == "__main__":
@@ -303,6 +313,8 @@ if __name__ == "__main__":
         patroller()
         email_sender()
         sent_cnt_refresher()
+        # clear data dir
+        recreate_dir("data/")
         app.run(host='0.0.0.0', port=2000, debug=False, threaded=True)
 
     finally:

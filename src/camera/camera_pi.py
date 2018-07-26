@@ -26,6 +26,7 @@ SOUND_ALERT_FLG = conf.SOUND_ALERT_FLG
 CAMERA_RESOLUTION = conf.CAMERA_RESOLUTION
 CAMERA_ROTATION = conf.CAMERA_ROTATION
 DRAW_RECTANGLE = conf.DRAW_RECTANGLE
+PERSON_FLG = False
 # GPIO startup
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -174,20 +175,22 @@ class Camera(BaseCamera):
                     # return current frame
                     stream.seek(0)
                     global CAPTURE
+                    global PERSON_FLG
                     if CAPTURE:
                         ndarray = np.fromstring(stream.getvalue(), dtype=np.uint8)
                         frame = cv2.imdecode(ndarray, cv2.IMREAD_COLOR)
                         file_name = "capture_{timestamp:%Y-%m-%d-%H-%M-%S-%f}.jpg".format(
                                         timestamp=datetime.datetime.now())
                         cv2.imwrite(DATA_PATH + file_name, frame)
-                        CAPTURE=False
+                        CAPTURE = False
                     if DETECT_FLG:
                         #stream_monitoring = motion_detecter(stream)
                         ndarray = np.fromstring(stream.getvalue(), dtype=np.uint8)
                         frame = cv2.imdecode(ndarray, cv2.IMREAD_COLOR)
                         img = pre_process_image(frame)
-                        frame, detect_flg = infer_image( graph, input_fifo, output_fifo, img, frame )
-                        if detect_flg:
+                        PERSON_FLG = False
+                        frame, PERSON_FLG = infer_image( graph, input_fifo, output_fifo, img, frame )
+                        if PERSON_FLG:
                             # save the frame
                             # https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_gui/py_image_display/py_image_display.html#write-an-image
                             file_name = "{timestamp:%Y-%m-%d-%H-%M-%S-%f}.jpg".format(
