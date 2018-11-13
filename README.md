@@ -65,7 +65,7 @@ sudo systemctl disable security_monitor.service
 ```
 Check log is fine  
 ```shell
-tail -100 /var/log/syslog
+systemctl -l status security_monitor
 ```
 
 # Mapping the internal web server (192.168.31.109:20000) to the Internet (http://209640a7u0.iok.la:20705/)
@@ -90,4 +90,39 @@ Device and webpage screenshot:
 ![device_with_movidius](assets/device_with_movidius.jpg)
 ![webpage_with_movidius](assets/webpage_with_movidius.jpg)
 
+
+## Push to Internet using autossh tunnel
+
+### Reference:
+- https://blog.csdn.net/upshi/article/details/78630285
+- https://blog.windrunner.me/sa/reverse-ssh.html
+
+### command of this case:
+
+```shell
+sudo vi /etc/systemd/system/remote-autossh.service
+```
+Add below (Note that __ecs__ is configured in my __/etc/hosts__ file:  
+```
+[Unit]
+Description=AutoSSH service for remote tunnel
+After=network-online.target
+
+[Service]
+User=pi
+ExecStart=/usr/bin/autossh -M 4444 -N -o "PubkeyAuthentication=yes" -o "StrictHostKeyChecking=false" -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 28001:127.0.0.1:8001 root@ecs
+
+[Install]
+WantedBy=multi-user.target
+```
+Enable and start service, this service will be automatically kick off next time reboot.
+```shell
+udo systemctl daemon-reload
+sudo systemctl start remote-autossh
+sudo systemctl enable remote-autossh.service
+```
+check log
+```shell
+systemctl -l status remote-autossh
+```
 
