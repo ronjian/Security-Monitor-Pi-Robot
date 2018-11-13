@@ -111,7 +111,7 @@ After=network.target
 [Service]
 User=pi
 Environment="AUTOSSH_GATETIME=0"
-ExecStart=/usr/bin/autossh -M 4444 -N -o "PubkeyAuthentication=yes" -o "StrictHostKeyChecking=false" -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 28001:127.0.0.1:8001 root@ecs
+ExecStart=/usr/bin/autossh -M 6666 -N -o "PubkeyAuthentication=yes" -o "StrictHostKeyChecking=false" -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 80:127.0.0.1:2000 root@ecs
 
 [Install]
 WantedBy=multi-user.target
