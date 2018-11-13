@@ -106,10 +106,11 @@ Add below (Note that __ecs__ is configured in my __/etc/hosts__ file:
 ```
 [Unit]
 Description=AutoSSH service for remote tunnel
-After=network-online.target
+After=network.target
 
 [Service]
 User=pi
+Environment="AUTOSSH_GATETIME=0"
 ExecStart=/usr/bin/autossh -M 4444 -N -o "PubkeyAuthentication=yes" -o "StrictHostKeyChecking=false" -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -R 28001:127.0.0.1:8001 root@ecs
 
 [Install]
@@ -117,7 +118,7 @@ WantedBy=multi-user.target
 ```
 Enable and start service, this service will be automatically kick off next time reboot.
 ```shell
-udo systemctl daemon-reload
+sudo systemctl daemon-reload
 sudo systemctl start remote-autossh
 sudo systemctl enable remote-autossh.service
 ```
