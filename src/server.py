@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, url_for, redirect, flash
 from pimodules import motor, servo_hw
 from camera import camera_pi
 from os import listdir,remove, system
@@ -27,10 +27,28 @@ VERTICAL_DC = 1500
 HORIZONTAL_DC = 1500
 
 app = Flask(__name__)
+app.secret_key = 'some_secret'
 
 @app.route("/")
-def index():
-    return render_template('index.html')
+def welcome():
+    return render_template('welcome.html')
+
+@app.route("/asljflasdjfasdfwl")
+def asljflasdjfasdfwl():
+    return render_template('asljflasdjfasdfwl.html')
+
+# credit: http://docs.jinkan.org/docs/flask/patterns/flashing.html
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        if request.form['username'] != 'rong' or \
+                request.form['password'] != '64573635':
+            error = 'Invalid credentials'
+        else:
+            flash('You were successfully logged in')
+            return redirect(url_for('asljflasdjfasdfwl'))
+    return render_template('login.html', error=error)
 
 def gen(camera):
     """Video streaming generator function."""
@@ -281,6 +299,9 @@ def sent_cnt_refresher():
                 logger.debug("alert queue is cleaned")
                 SENT_CNT = 0
                 current_day = datetime.datetime.now().strftime("%Y-%m-%d")
+                shutil.rmtree("data/")
+                os.makedirs("data/")
+                logger.debug("data dir is cleaned")
         logger.debug("exit sent_cnt refresher")
 
     # start sent_count refresher
